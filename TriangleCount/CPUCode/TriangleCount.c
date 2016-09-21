@@ -1,5 +1,5 @@
 /**
- *
+ * V bistvu tam bo sam pršparala eno iteracijo branja in pisanja v LMem kar je bolj bogo...
  *
  * 	Summary:
  */
@@ -32,7 +32,7 @@ int power = 2;
 	1 - prints input, output, final result
 	2 - tests correctness of result and prints if test passed
 */
-int trace = 0;
+int trace = 2;
 
 // elements of matrix are in -range  to +range interval
 float range = 100.0;
@@ -53,7 +53,7 @@ struct option options[] = {
 	{"size",	required_argument, 0, 'n'},
 	{"trace",	required_argument, 0, 't'},
 	{"range",	required_argument, 0, 'r'},
-	{"power",	required_argument, 0, 'p'},
+	{"power",	required_argument, 0, 'r'},
 	{0,0,0,0}
 };
 
@@ -164,6 +164,7 @@ void mat_power(int n, float *mat, int pow, float *res) {
         	pow -= 1;
         }
 	}
+
 }
 
 
@@ -187,113 +188,79 @@ int main(int argc, char * argv[])
 	int n1 = calc_align(n, ALIGN_BURST/sizeof(float));
 	int size1 = n1*n1;
 
-	int dataSizeBytes = size * sizeof(float);
-	int dataSizeBytes1 = size1 * sizeof(float);
+	int sizeBytes = size * sizeof(float);
+	int sizeBytes1 = size1 * sizeof(float);
 
-	float *mat = malloc(dataSizeBytes);
+	float *mat = malloc(sizeBytes);
 
-	float *matAligned = malloc(dataSizeBytes1);
+	float *matAligned = malloc(sizeBytes1);
 
-	float *matTransformed = malloc(dataSizeBytes1);
-	float *matTransposed = malloc(dataSizeBytes1);
-	float *mat_final = malloc(dataSizeBytes);
-
+	float *matTransformed = malloc(sizeBytes1);
+	float *matTransposed = malloc(sizeBytes1);
+	float *mat_final = malloc(sizeBytes);
 
 	float *vector;
-	float *output = malloc(dataSizeBytes1);
-
-	float *expected = malloc(dataSizeBytes);
+	float *output = malloc(sizeBytes1);
+	float *expected = malloc(sizeBytes);
 
 	generateMatrix(n, mat, range);
-
+	for (int i=0; i<n*n; i++) {
+		mat[i] = i+1;
+	}
 	alignMatrix(n, n1, mat, matAligned);
-
 
 	timing_t timer;
 	timer_start(&timer);
 
-	max_file_t * maxfile = MatMatMultiply_init();
-	max_engine_t * engine = max_load(maxfile, "*");
-
-	// write LP to LMem
-	MatMatMultiply_writeLMem_actions_t writeact;
-	writeact.param_address = 0;
-	writeact.param_nbytes = dataSizeBytes1;
-
-	MatMatMultiply_actions_t actions;
-	actions.param_matrixLength = n1*n1;
-	actions.param_n = n1;
-
 	int first = 1;
-	float *res = malloc(dataSizeBytes1);
+	float *res = malloc(sizeBytes1);
 
-	int pow1 = power;
-	while (pow1>0) {
-		if (pow1 % 2 == 0) {
-			transform(n1, matAligned, matTransformed, VECTOR_SIZE);
-			transpose(n1, matAligned, matTransposed);
+	transform(n1, matAligned, matTransformed, VECTOR_SIZE);
+	transpose(n1, matAligned, matTransposed);
 
-			writeact.instream_cpu_to_lmem = matTransformed;
-			MatMatMultiply_writeLMem_run(engine, &writeact);
+	MatMatMultiply_writeLMem(0, sizeBytes1, matTransformed);
 
-			for (int i=0; i<n1; i++) {
-				vector = &matTransposed[n1*i];
-				actions.instream_vectorInput = vector;
-				actions.outstream_output = &output[n1*i];
-				MatMatMultiply_run(engine, &actions);
-			}
-
-			transpose(n1, output, matAligned);
-			pow1 /=2;
-
-		}
-		else {
-			if (first) {
-				for (int i=0; i<n1; i++) {
-					for (int j=0; j<n1; j++) {
-						res[i*n1+j] = matAligned[i*n1+j];
-					}
-				}
-				first = 0;
-			}
-			else {
-				transform(n1, matAligned, matTransformed, VECTOR_SIZE);
-				transpose(n1, res, matTransposed);
-
-				writeact.instream_cpu_to_lmem = matTransformed;
-				MatMatMultiply_writeLMem_run(engine, &writeact);
-
-				for (int i=0; i<n1; i++) {
-					vector = &matTransposed[n1*i];
-					actions.instream_vectorInput = vector;
-					actions.outstream_output = &output[n1*i];
-					MatMatMultiply_run(engine, &actions);
-				}
-				transpose(n1, output, res);
-			}
-			pow1 -= 1;
-		}
+	for (int i=0; i<n1; i++) {
+		vector = &matTransposed[n1*i];
+		MatMatMultiply(i, size1, n1, vector);
 	}
 
-	reverseAlignMatrix(n, n1, res, mat_final);
 
-	max_unload(engine);
+	MatMatMultiply_readLMem(sizeBytes1, sizeBytes1, output);
+	transpose(n1, output, matAligned);
+
+	reverseAlignMatrix(n, n1, res, mat_final);
 	timer_stop(&timer);
 
 	float sum = sumMat(size, output);
-	printf("%d %d %f %ld %ld\n", n, power, sum, timer.realtime, timer.cputime);
+	printf("%d %f %ld %ld\n", n, sum, timer.realtime, timer.cputime);
 
 	int status = 0;
 
 	if (trace == 1) {
-		printf("\nMatrix in\n");
-		printMatrix(n, mat);
+		printf("\nMatrix A\n");
+		for (int i=0; i<n; i++){
+			for (int j=0; j<n; j++){
+				printf("%f " , mat[i*n+j]);
+			}
+			printf("\n");
+		}
+
 
 		printf("\n\nResult\n");
-		printMatrix(n, mat_final);
+		for (int i=0; i<n; i++){
+			for (int j=0; j<n; j++){
+				printf("%f " , output[i*n+j]);
+			}
+			printf("\n");
+		}
 	}
 	else if (trace == 2) {
-		mat_power(n, mat, power, expected);
+		mat_power(n, mat, 2, expected);
+
+		printf("power %d", power);
+		printMatrix(n, mat);
+		printMatrix(n, expected);
 		int status = check(size, mat_final, expected);
 		if (status) {
 			printf("Test failed.\n");

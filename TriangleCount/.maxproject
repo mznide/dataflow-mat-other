@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<maxCompilerManager version="2">
+<enginePart internalEngineSubproject="TriangleCount_EngineCode" isSrcBin="false" isUseDefaultSelected="false" outputLocation="/TriangleCount_EngineCode/bin" projectName="TriangleCount"/>
+<cpuPart internalCpuSubproject="TriangleCount_CPUCode"/>
+<watchedFiles/>
+</maxCompilerManager>

@@ -41,10 +41,13 @@ class MultiplyKernel extends Kernel {
 
 		carriedSum <== stream.offset(newSum, n.cast(dfeInt(32))*-1, -nMax, -16);
 		DFEVar[] summands = new DFEVar[vectorDepth];
-
 		for(int i=0; i < vectorDepth; i++){
 			summands[i] = newSum[i];
+
 		}
+
+		DFEVar sm = TreeReduce.reduce(new Add<DFEVar>(), summands);
+		//sm.simWatch("sm");
 
 		// We have a controlled output to deliver the sum at the end of each column
 		io.output("output", TreeReduce.reduce(new Add<DFEVar>(), summands), floatType, y === (n/vectorDepth-1));

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<maxCompilerManager version="2">
+<enginePart internalEngineSubproject="MatrixPowerLMem_EngineCode" isSrcBin="false" isUseDefaultSelected="false" outputLocation="/MatrixPowerLMem_EngineCode/bin" projectName="MatrixPowerLMem"/>
+<cpuPart internalCpuSubproject="MatrixPowerLMem_CPUCode"/>
+<watchedFiles/>
+</maxCompilerManager>
