@@ -231,6 +231,7 @@ int main(int argc, char * argv[]) {
 	mat_power(n, mat, power, res);
 	timer_stop(&timer);
 
+	float tr = sumMat(size, res);
 	printf("%d %d %ld %ld\n", n, power, timer.realtime, timer.cputime);
 	
 	if (trace == 1) {

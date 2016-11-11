@@ -14,13 +14,16 @@
 #include <string.h>
 #include <getopt.h>
 #include "common.h"
-
+#include <float.h>
 
 // show help
 int help_flag = 0;
 
 // number of rows / columns. Matrix size is n*n
-int n = 32;
+int n = 8;
+
+float f = FLT_MAX;
+
 
 /* tracing
 	0 - prints only n, sum of result, realtime, cputime
@@ -31,7 +34,6 @@ int trace = 0;
 // elements of matrix are in -range  to +range interval
 float range = 100.0;
 
-int power = 2;
 
 void help(const char * cmd) {
     printf("Usage: %s [filename]\n", cmd);
@@ -48,11 +50,12 @@ struct option options[] = {
 	{"size",	required_argument, 0, 'n'},
 	{"trace",	required_argument, 0, 't'},
 	{"range",	required_argument, 0, 'r'},
-	{"power",	required_argument, 0, 'p'},
 	{0,0,0,0}
 };
 
-#define SHORTOPT "hn:t:r:p:"
+
+
+#define SHORTOPT "hn:t:r:"
 
 void parse_args(int argc, char * argv[]) {
 	while (1) {
@@ -74,9 +77,6 @@ void parse_args(int argc, char * argv[]) {
 			case 'r':
 				range = atoi(optarg);
 				break;
-			case 'p':
-				power = atoi(optarg);
-				break;
 			case '?':
 				error(1, "Invalid1 option '%c'", optopt);
 			default:
@@ -93,10 +93,11 @@ void parse_args(int argc, char * argv[]) {
 // **************** matrices
 
 
+
 void generateMat(int n, float *mat, int range) {
 	for (int i = 0; i < n; i++)
 		for (int j = 0; j < n; j++)
-			mat[i * n + j] = rand_signdouble(range);
+			mat[i * n + j] = rand_int(range);
 }
 
 
@@ -123,17 +124,19 @@ void mulMatVec(int n, float *mat, float *vec, float *res){
 	}
 }
 
-void mulMatMat(int n, float *mat, float *matB, float *res){
+void minPlus(int n, float *mat, float *res){
 	float *temp = malloc(n*n* sizeof(float));
 
 
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++) {
-			float sum = 0;
+			float min = f;
 			for (int k = 0; k < n; k++) {
-				sum +=  mat[i*n+k] * matB[k*n+j];
+				if (mat[i*n+k]+mat[k*n+j]<min)
+					min = mat[i*n+k]+mat[k*n+j];
+			
 			}
-			temp[i*n+j] = sum;
+			temp[i*n+j] = min;
 	  }
 	}
 	
@@ -149,33 +152,14 @@ void mulMatMat(int n, float *mat, float *matB, float *res){
 void print_matrix(int n, float *mat){
 	for (int i=0; i<n; i++){
 		for (int j=0; j<n; j++){
-			printf("%.2f " , mat[i*n+j]);
+			if (mat[i*n+j]<FLT_MAX-10)
+				printf("  %.0f " , mat[i*n+j]);
+			else
+				printf(" inf ");
 		}
 		printf("\n");
 	}
-}
-
-void mat_power(int n, float *mat, int pow, float *res) {
-	float *mat1 = malloc(n*n * sizeof(float));
-
-	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < n; j++){
-			res[i*n+j] = i==j;
-			mat1[i*n+j] = mat[i*n+j];
-		}
-	}
-
-	while (pow>0) {
-		if (pow % 2 == 0) {
-		    mulMatMat(n, mat1, mat1, mat1);
-		    pow /= 2;
-		}
-
-		else {
-			mulMatMat(n, res, mat1, res);
-			pow -= 1;
-		}
-	}
+	printf("\n");
 }
 
 
@@ -214,6 +198,26 @@ int check(float *output, float *expected) {
 	}
 	return status;
 }
+void apsp(int n, float *mat, float *res) {
+
+	for (int i=0; i<n; i++) {
+		for (int j=0; j<n; j++) {
+			res[i*n+j] = mat[i*n+j];
+		}
+	}
+
+	for (int k = 0; k < n; k++) {
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				if (res[i * n + k] + res[k*n + j] < res[i * n +j]) {
+					res[i * n + j] = res[i * n + k] + res[k * n + j];
+				}
+			}
+	  	}
+	}
+
+}
+
 
 
 int main(int argc, char * argv[]) {
@@ -223,25 +227,48 @@ int main(int argc, char * argv[]) {
 
 	float *mat = malloc(matSizeBytes);
 	float *res = malloc(matSizeBytes);
+	float mat1[] =
+	 {0, 5, f, 2, f, 1, 5, 3,
+	  f, 0, 2, f, f, 1, 2, 3,
+	  3, f, 0, f, 7, 1, 2, 3,
+	  f, f, 4, 0, 1, 1, 3, 3,
+	  1, 3, f, f, 0, 1, 2, f,
+	  1, 3, f, f, 5, 0, 2, f,
+	  1, 3, f, f, 1, 1, 0, f,
+	  1, 3, f, f, 10, 1, 2, 0,
+	 };
+	
+	generateMat(n, mat, 8);
 
-	generateMat(n, mat, range);
+
+	if (n != 8)
+		generateMat(n, mat, range);
+	//nicle
+	for(int i=0;i<n;i++){
+		mat[i*n+i]=0;	
+	}
 	timing_t timer;
 	timer_start(&timer);
 	//multMatMat(n, matA, matB, res);
-	mat_power(n, mat, power, res);
+
+	int pow = n;
+	for (int i=1; i<=pow; i=i*2) {
+		minPlus(n, mat, mat);
+	}
+
 	timer_stop(&timer);
 
-	printf("%d %d %ld %ld\n", n, power, timer.realtime, timer.cputime);
+	float tr = sumMat(size, res);
+	printf("%d %.2f %ld %ld\n", n, tr, timer.realtime, timer.cputime);
 	
 	if (trace == 1) {
 		printf("\nMatrix in\n");
 		print_matrix(n, mat);
 
 		printf("\n\nResult\n");
-		print_matrix(n, res);
+		print_matrix(n, mat1);
 	}
-	free(mat);
 	free(res);
-
+	free(mat);
 	return 0;
 }

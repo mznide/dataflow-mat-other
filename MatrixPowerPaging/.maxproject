@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<maxCompilerManager version="2">
+<enginePart internalEngineSubproject="MatrixPowerPaging_EngineCode" isSrcBin="false" isUseDefaultSelected="false" outputLocation="/MatrixPowerPaging_EngineCode/bin" projectName="MatrixPowerPaging"/>
+<cpuPart internalCpuSubproject="MatrixPowerPaging_CPUCode"/>
+<watchedFiles/>
+</maxCompilerManager>
